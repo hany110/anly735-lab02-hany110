@@ -1,0 +1,124 @@
+---
+title: "Predictive AI Replication Laboratory"
+subtitle: "ANLY 735 – Research Seminar in Predictive AI"
+author: "Hany Raza"
+date: today
+format:
+  docx:
+    toc: false
+bibliography: references.bib
+---
+
+# Study
+
+**Article:** *Plasticity Loss in Deep Reinforcement Learning: A Survey*
+
+**Authors:** Klein, T., Miklautz, L., Sidak, K., Plant, C., & Tschiatschek, S.
+
+**DOI/URL:** https://arxiv.org/abs/2411.04832
+
+**Replication Type:** Proxy
+
+**Computational Environment:** Python in Google Colab, CPU
+
+**Primary Packages:** PyTorch 2.11.0+cpu, scikit-learn 1.6.1, NumPy 2.1.3, pandas 2.2.3, Matplotlib
+
+**Random Seed:** Data split = 42; pixel permutation = 123; model seeds = 0, 1, 2, 3, 4
+
+**Repository:** [Insert GitHub repository URL]
+
+# 1. Research Claim
+
+## What result are you attempting to reproduce?
+
+Klein et al. [-@klein2024] survey evidence that neural networks trained under nonstationary conditions can experience **plasticity loss**, meaning that prior learning may reduce how effectively a model learns after the task or data distribution changes. This is different from an immediate performance decline or forgetting because the central question concerns **subsequent learning capacity**. The narrower claim examined in this proxy replication is that, after a controlled change in input conditions, a previously trained network may learn the new condition more slowly than an equivalent freshly initialized network. Because the anchor paper is a survey rather than one primary experiment, there is no single survey-wide evaluation metric to reproduce. This study therefore measures post-change test accuracy, learning trajectories, and the number of epochs required to reach predefined accuracy thresholds. These measures directly assess whether prior training changes the model's rate of adaptation.
+
+# 2. Replication Strategy
+
+## How will you investigate the claim?
+
+This study is a **proxy replication** because Klein et al. [-@klein2024] synthesize prior literature rather than report one original dataset, model, and learning trajectory. I constructed a controlled supervised-learning experiment that captures the broader stability–plasticity phenomenon discussed in the survey. An MLP was first trained on digit images whose pixels were rearranged using one fixed permutation, representing Condition A. The input representation was then changed to the original unpermuted images, Condition B. The experienced model continued learning Condition B and was compared with a fresh model that began from the exact same original initialization. Both models received the same Condition B data, optimizer type, learning rate, and 40-epoch adaptation budget. The experiment therefore does not attempt a numerical reproduction of a specific deep-RL result; instead, it tests whether prior training alters subsequent learning behavior after a nonstationary change.
+
+# 3. Data
+
+The experiment used the public **scikit-learn Digits dataset**, which contains 1,797 observations of handwritten digits from 10 classes. Each observation is an 8 × 8 grayscale image represented by 64 pixel features, and the target is the digit label from 0 through 9. Pixel values, originally ranging from 0 to 16, were divided by 16 to scale them to [0, 1]. A stratified 70/30 split produced 1,257 training observations and 540 test observations. Condition A used the same observations and labels but applied one fixed random permutation to all 64 pixel positions. Condition B used the original pixel arrangement. Thus, the experimental change affected the input representation while preserving the samples and labels. This simplified supervised dataset differs from the deep-RL environments synthesized by Klein et al. [-@klein2024], but it provides a computationally inexpensive proxy for nonstationary learning.
+
+# 4. Method
+
+A feed-forward multilayer perceptron was implemented in PyTorch with 64 input features, two hidden layers containing 128 and 64 ReLU units, and a 10-unit classification output layer. For each of five model seeds, one initial set of weights was saved. One copy, the **experienced model**, was trained for 100 epochs on Condition A using Adam with a learning rate of 0.001 and cross-entropy loss. A second copy was retained at the identical initial weights.
+
+After the input condition changed, the experienced model was trained for 40 epochs on Condition B. The **fresh model** began from the corresponding saved initial weights and received the same 40-epoch Condition B training. A new Adam optimizer was created for both models at this stage so accumulated optimizer state from Condition A would not explain differences in adaptation. Test accuracy was recorded every epoch. Condition A accuracy was also monitored for the experienced model to evaluate retention. Results were averaged across five paired random seeds. Learning rate was further summarized by the number of epochs required to reach 30%, 50%, 70%, and 80% Condition B accuracy.
+
+# 5. Results
+
+Before the condition changed, the experienced model achieved a mean Condition A test accuracy of **94.70%**, while its accuracy on Condition B was only **6.74%**, confirming that the changed representation substantially altered its initial performance. After Condition B training began, both models improved, but the fresh model learned considerably faster. At epochs 10, 20, and 40, Condition B accuracy was **16.96%, 34.26%, and 66.78%** for the experienced model compared with **52.26%, 73.07%, and 81.89%** for the fresh model. The experienced model nevertheless retained substantial previous capability, with Condition A accuracy remaining **80.37%** after 40 Condition B epochs. The result therefore shows continued new learning rather than complete loss of plasticity, but the experienced network adapted much more slowly over the observed 40-epoch period.
+
+| Epoch after change | Experienced: Condition B accuracy | Fresh: Condition B accuracy | Experienced: Condition A retention |
+|---:|---:|---:|---:|
+| 0 | 6.74% | 8.96% | 94.70% |
+| 5 | 9.78% | 31.89% | 89.15% |
+| 10 | 16.96% | 52.26% | 81.85% |
+| 20 | 34.26% | 73.07% | 85.19% |
+| 40 | 66.78% | 81.89% | 80.37% |
+
+## Stability–Plasticity Diagnostic
+
+**CHANGE** — The input representation changed from a fixed random pixel permutation to the original digit representation.
+
+**RETENTION** — The experienced model's Condition A accuracy decreased from **94.70% to 80.37%**, indicating substantial but incomplete retention.
+
+**NEW LEARNING** — The experienced model successfully learned Condition B, increasing from **6.74% to 66.78%** accuracy over 40 epochs.
+
+**RATE** — New learning was considerably slower than for the fresh model. The experienced model required **29 epochs** to reach 50% accuracy compared with **10 epochs** for the fresh model.
+
+**TRADEOFF** — The experienced model retained much of its earlier capability while adapting more slowly to the changed condition. This pattern is consistent with reduced plasticity rather than complete forgetting or inability to learn.
+
+# 6. Compare
+
+## How closely did your results align with the original study?
+
+Because Klein et al. [-@klein2024] is a survey, there is no single original numerical result that should be expected to match this proxy experiment. The relevant pattern synthesized in the survey is that a previously trained network may become less effective at fitting a new target than a fresh network after learning conditions change. The proxy experiment reproduced this directional pattern. The experienced model required **18 epochs to reach 30% Condition B accuracy**, compared with 5 epochs for the fresh model, and **29 versus 10 epochs** to reach 50%. The fresh network reached 70% at epoch 18 and 80% at epoch 36, whereas the experienced network reached neither threshold within the 40-epoch observation window. At the same time, the experienced model retained approximately 80% accuracy on Condition A. The evidence is therefore consistent with a stability–plasticity tradeoff: previous capability was substantially retained while adaptation to the changed condition was slower. However, the 40-epoch experiment cannot establish that the experienced model would permanently remain below the fresh model if training continued.
+
+| Evidence | Original Study / Survey | Replication |
+|---|---|---|
+| Primary learning-capacity pattern | Previously trained models can show poorer ability to fit changed targets than fresh models; no single survey-wide numerical value | Epochs to 50% B accuracy: Experienced = **29**, Fresh = **10** |
+| Post-change performance | Plasticity concerns subsequent learning behavior rather than the immediate performance drop alone | Epoch 40 B accuracy: Experienced = **66.78%**, Fresh = **81.89%** |
+| Retention | Plasticity is conceptually distinct from forgetting | Condition A accuracy: **94.70% → 80.37%** after 40 B epochs |
+
+# 7. Reproducibility Check
+
+Evaluate the reproducibility of the original study and your own analysis.
+
+- [x] Data source documented
+- [x] Code runs from beginning to end
+- [x] Computational environment identified
+- [x] Software/packages documented
+- [x] Package versions documented when relevant
+- [x] Random seed documented when applicable
+- [x] Key preprocessing steps documented
+- [x] Evaluation procedure documented
+- [x] Repository README provides reproduction instructions
+
+**What was the greatest reproducibility challenge you encountered?**
+
+The main reproducibility challenge was that the anchor paper is a survey rather than a single empirical experiment with one dataset, codebase, and numerical benchmark. The broader concept of reduced post-change learning capacity therefore had to be translated into a controlled proxy experiment without implying direct reproduction of an original Klein et al. result. To make the proxy reproducible, the dataset, train/test split, pixel permutation, network architecture, package versions, optimizer settings, learning budget, and random seeds were explicitly documented. The experienced and fresh models were also paired using identical initial weights so that prior Condition A training was the principal experimental difference.
+
+# 8. Extend
+
+## What did the replication reveal that you would investigate next?
+
+A useful extension would be to **increase the post-change training period from 40 epochs to approximately 100–150 epochs** while continuing to track both experienced and fresh models. The present experiment demonstrates slower adaptation during the first 40 epochs, but it does not establish whether this difference is temporary or whether the experienced model converges to a persistently worse solution. A longer experiment could compare the number of epochs required to reach higher thresholds such as 70%, 80%, and 90%, the area under each post-change learning curve, and final accuracy. This would distinguish a **temporary reduction in learning rate** from a more persistent reduction in attainable performance. Continuing to measure Condition A retention would also show how prolonged adaptation affects the stability–plasticity tradeoff.
+
+# Replication Verdict
+
+- [ ] **Reproduced** — The central result was substantially reproduced.
+- [x] **Partially Reproduced** — Some findings were reproduced, but meaningful differences remain.
+- [ ] **Not Reproduced** — The central result was not reproduced.
+- [ ] **Not Directly Comparable** — A proxy replication produced useful methodological insight, but numerical comparison is not appropriate.
+
+The proxy experiment reproduced the narrower pattern that a previously trained network can continue learning after an input-distribution change while adapting substantially more slowly than an equivalent fresh network. However, the experiment used supervised digit classification rather than deep reinforcement learning and observed adaptation for only 40 epochs, so it does not establish permanent plasticity loss or reproduce the broader body of findings surveyed by Klein et al. [-@klein2024].
+
+# References
+
+::: {#refs}
+:::

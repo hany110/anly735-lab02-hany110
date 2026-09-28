@@ -1,0 +1,6 @@
+Diagnostic,Evidence
+CHANGE,Input representation changed from fixed pixel-permuted digits to clean digits.
+RETENTION,Condition A accuracy: 0.947 before change -> 0.804 after 40 epochs on Condition B.
+NEW LEARNING,"At epoch 40, Condition B accuracy: Experienced = 0.668; Fresh = 0.819."
+RATE,Compare epochs required by Experienced and Fresh models to reach the accuracy thresholds in the threshold table.
+TRADEOFF,Assess whether the experienced model retains Condition A performance while learning Condition B more slowly than the fresh model.
